@@ -1,0 +1,41 @@
+# docker-compose.yml - Local development dengan Ollama
+
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-server
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    command: serve
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build: .
+    container_name: gpt-oss-20b-app
+    ports:
+      - "7860:7860"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=unsloth/gpt-oss-20b-GGUF:Q4_K_M
+      - GRADIO_SERVER_NAME=0.0.0.0
+      - GRADIO_PORT=7860
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./app.py:/app/app.py
+      - ./config.py:/app/config.py
+    command: python app.py
+
+volumes:
+  ollama_data:
